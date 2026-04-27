@@ -1,20 +1,25 @@
 package com.example.collections;
 
-public class ArrayData {
+public class ArrayData<T> {
 
-    static final int DATA_CAPACITY = 4;
+    static final int CHUNK_CAPACITY = 4;
 
-    int[]       data;
-    int         count;      // how many slots are currently used
-    ArrayData  next;
-    ArrayData  prev;
+    Object[]       data;
+    int            count;
+    ArrayData<T>  next;
+    ArrayData<T>  prev;
 
     public ArrayData() {
-        this.data  = new int[DATA_CAPACITY];
+        this.data  = new Object[CHUNK_CAPACITY];
         this.count = 0;
     }
 
-    public boolean isFull()  { return count == DATA_CAPACITY; }
+    @SuppressWarnings("unchecked")
+    public T get(int i) { return (T) data[i]; }
+
+    public void set(int i, T value) { data[i] = value; }
+
+    public boolean isFull()  { return count == CHUNK_CAPACITY; }
     public boolean isEmpty() { return count == 0; }
 
     @Override

@@ -3,20 +3,19 @@ package com.example.collections;
 import com.example.collections.exceptions.EmptyListException;
 import com.example.collections.exceptions.InvalidIndexException;
 import com.example.collections.exceptions.InvalidInitialSizeException;
-import com.example.collections.exceptions.ListCapacityLimitException;
 import com.example.collections.exceptions.NegativeCapacityException;
 
-public class MyArrayList {
+public class MyArrayList<T> {
 
-    private static class DataPos {
-        ArrayData Data;
-        int localIndex;
-        DataPos(ArrayData c, int i) { Data = c; localIndex = i; }
+    private static class ChunkPos<T> {
+        ArrayData<T> chunk;
+        int           localIndex;
+        ChunkPos(ArrayData<T> c, int i) { chunk = c; localIndex = i; }
     }
 
-    private ArrayData head;
-    private ArrayData tail;
-    private int size;
+    private ArrayData<T> head;
+    private ArrayData<T> tail;
+    private int           size;
 
     public MyArrayList() {}
 
@@ -27,86 +26,79 @@ public class MyArrayList {
             throw new InvalidInitialSizeException("Initial capacity cannot be zero");
     }
 
-    public int getSize() { return size; }
+    public int getSize()     { return size; }
 
     public int getCapacity() {
         int cap = 0;
-        ArrayData c = head;
-        while (c != null) { cap += ArrayData.DATA_CAPACITY; c = c.next; }
+        ArrayData<T> c = head;
+        while (c != null) { cap += ArrayData.CHUNK_CAPACITY; c = c.next; }
         return cap;
     }
 
-    public void addEnd(int value) {
+    public void addEnd(T value) {
         ensureTailHasSpace();
-        tail.data[tail.count++] = value;
+        tail.set(tail.count++, value);
         size++;
     }
 
-    public void addStart(int value) {
+    public void addStart(T value) {
         if (head == null) {
-            head = tail = new ArrayData();
+            head = tail = new ArrayData<>();
         } else if (head.isFull()) {
-            ArrayData newData = new ArrayData();
-            newData.next = head;
-            head.prev = newData;
-            head = newData;
+            ArrayData<T> chunk = new ArrayData<>();
+            chunk.next = head;
+            head.prev  = chunk;
+            head       = chunk;
         }
         for (int i = head.count; i > 0; i--)
-            head.data[i] = head.data[i - 1];
-        head.data[0] = value;
+            head.set(i, head.get(i - 1));
+        head.set(0, value);
         head.count++;
         size++;
     }
 
-   public void add(int index, int value) {
+    public void add(int index, T value) {
         if (index < 0 || index > size)
             throw new InvalidIndexException(index + ", size=" + size);
         if (index == 0)    { addStart(value); return; }
         if (index == size) { addEnd(value);   return; }
-
-        DataPos pos = findPosition(index);
-        insertAt(pos.Data, pos.localIndex, value);
+        ChunkPos<T> pos = findPosition(index);
+        insertAt(pos.chunk, pos.localIndex, value);
         size++;
     }
 
-    public int get(int index) {
+    public T get(int index) {
         if (size == 0) throw new EmptyListException();
         if (index < 0 || index >= size)
             throw new InvalidIndexException(index + ", size=" + size);
-        DataPos pos = findPosition(index);
-        return pos.Data.data[pos.localIndex];
+        ChunkPos<T> pos = findPosition(index);
+        return pos.chunk.get(pos.localIndex);
     }
 
     public void remove(int index) {
         if (size == 0) throw new EmptyListException();
         if (index < 0 || index >= size)
             throw new InvalidIndexException(index + ", size=" + size);
-
-        DataPos pos = findPosition(index);
-        ArrayData Data = pos.Data;
-        int local = pos.localIndex;
-
-        for (int i = local; i < Data.count - 1; i++)
-            Data.data[i] = Data.data[i + 1];
-        Data.count--;
+        ChunkPos<T>   pos   = findPosition(index);
+        ArrayData<T> chunk = pos.chunk;
+        int           local = pos.localIndex;
+        for (int i = local; i < chunk.count - 1; i++)
+            chunk.set(i, chunk.get(i + 1));
+        chunk.data[--chunk.count] = null;   // help GC
         size--;
-
-        if (Data.isEmpty()) unlinkData(Data);
+        if (chunk.isEmpty()) unlinkChunk(chunk);
     }
 
-    public void clear() {
-        head = tail = null;
-        size = 0;
-    }
+    public void clear() { head = tail = null; size = 0; }
 
-   public void print() {
+    public void print() {
         StringBuilder sb = new StringBuilder("[");
-        ArrayData c = head;
+        ArrayData<T> c = head;
         boolean first = true;
         while (c != null) {
             for (int i = 0; i < c.count; i++) {
                 if (!first) sb.append(", ");
-                sb.append(c.data[i]);
+                sb.append(c.get(i));
                 first = false;
             }
             c = c.next;
@@ -115,7 +107,7 @@ public class MyArrayList {
     }
 
     public void printChunks() {
-        ArrayData c = head;
+        ArrayData<T> c = head;
         StringBuilder sb = new StringBuilder();
         while (c != null) {
             sb.append(c);
@@ -125,62 +117,58 @@ public class MyArrayList {
         System.out.println(sb.length() == 0 ? "[]" : sb);
     }
 
-   private void ensureTailHasSpace() {
+    private void ensureTailHasSpace() {
         if (tail == null) {
-            head = tail = new ArrayData();
+            head = tail = new ArrayData<>();
         } else if (tail.isFull()) {
-            ArrayData chunk = new ArrayData();
+            ArrayData<T> chunk = new ArrayData<>();
             chunk.prev = tail;
             tail.next  = chunk;
             tail       = chunk;
         }
     }
 
-    private void insertAt(ArrayData chunk, int localIndex, int value) {
+    private void insertAt(ArrayData<T> chunk, int localIndex, T value) {
         if (chunk.isFull()) {
-            splitData(chunk);
-            int half = ArrayData.DATA_CAPACITY / 2;
-            if (localIndex >= half) {
-                chunk      = chunk.next;
-                localIndex -= half;
-            }
+            splitChunk(chunk);
+            int half = ArrayData.CHUNK_CAPACITY / 2;
+            if (localIndex >= half) { chunk = chunk.next; localIndex -= half; }
         }
         for (int i = chunk.count; i > localIndex; i--)
-            chunk.data[i] = chunk.data[i - 1];
-        chunk.data[localIndex] = value;
+            chunk.set(i, chunk.get(i - 1));
+        chunk.set(localIndex, value);
         chunk.count++;
     }
 
-    private void splitData(ArrayData chunk) {
-        ArrayData newChunk = new ArrayData();
-        int half = ArrayData.DATA_CAPACITY / 2;
-
+    private void splitChunk(ArrayData<T> chunk) {
+        ArrayData<T> newChunk = new ArrayData<>();
+        int half = ArrayData.CHUNK_CAPACITY / 2;
         for (int i = half; i < chunk.count; i++)
-            newChunk.data[newChunk.count++] = chunk.data[i];
+            newChunk.set(newChunk.count++, chunk.get(i));
+        for (int i = half; i < ArrayData.CHUNK_CAPACITY; i++)
+            chunk.data[i] = null;
         chunk.count = half;
-
         newChunk.prev = chunk;
         newChunk.next = chunk.next;
         if (chunk.next != null) chunk.next.prev = newChunk;
-        else tail = newChunk;
+        else                    tail = newChunk;
         chunk.next = newChunk;
     }
 
-    private void unlinkData(ArrayData Data) {
-        if (Data.prev != null) Data.prev.next = Data.next;
-        else head = Data.next;
-        if (Data.next != null) Data.next.prev = Data.prev;
-        else tail = Data.prev;
+    private void unlinkChunk(ArrayData<T> chunk) {
+        if (chunk.prev != null) chunk.prev.next = chunk.next;
+        else                    head = chunk.next;
+        if (chunk.next != null) chunk.next.prev = chunk.prev;
+        else                    tail = chunk.prev;
     }
 
-    private DataPos findPosition(int globalIndex) {
-        ArrayData current = head;
-        int remaining = globalIndex;
+    private ChunkPos<T> findPosition(int globalIndex) {
+        ArrayData<T> current   = head;
+        int           remaining = globalIndex;
         while (current != null) {
-            if (remaining < current.count)
-                return new DataPos(current, remaining);
+            if (remaining < current.count) return new ChunkPos<>(current, remaining);
             remaining -= current.count;
-            current = current.next;
+            current    = current.next;
         }
         throw new InvalidIndexException("Global index out of range: " + globalIndex);
     }
