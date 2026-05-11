@@ -5,17 +5,14 @@ import com.example.collections.exceptions.InvalidIndexException;
 import com.example.collections.exceptions.InvalidInitialSizeException;
 import com.example.collections.exceptions.NegativeCapacityException;
 
-public class MyArrayList<T> {
+import java.util.Comparator;
 
-    private static class ChunkPos<T> {
-        ArrayData<T> chunk;
-        int           localIndex;
-        ChunkPos(ArrayData<T> c, int i) { chunk = c; localIndex = i; }
-    }
+public class MyArrayList<T extends Comparable<T>>
+        implements Comparable<MyArrayList<T>> {
 
     private ArrayData<T> head;
     private ArrayData<T> tail;
-    private int           size;
+    private int size;
 
     public MyArrayList() {}
 
@@ -26,13 +23,38 @@ public class MyArrayList<T> {
             throw new InvalidInitialSizeException("Initial capacity cannot be zero");
     }
 
-    public int getSize()     { return size; }
+    public int getSize() { return size; }
 
     public int getCapacity() {
         int cap = 0;
         ArrayData<T> c = head;
         while (c != null) { cap += ArrayData.CHUNK_CAPACITY; c = c.next; }
         return cap;
+    }
+
+    @Override
+    public int compareTo(MyArrayList<T> other) {
+        return Integer.compare(this.size, other.size);
+    }
+
+    public void sort() {
+        sort(Comparable::compareTo);
+    }
+
+    public void sort(Comparator<T> comparator) {
+        if (size <= 1) return;
+        boolean swapped;
+        do {
+            swapped = false;
+            for (int i = 0; i < size - 1; i++) {
+                T a = get(i), b = get(i + 1);
+                if (comparator.compare(a, b) > 0) {
+                    setAt(i,     b);
+                    setAt(i + 1, a);
+                    swapped = true;
+                }
+            }
+        } while (swapped);
     }
 
     public void addEnd(T value) {
@@ -62,8 +84,15 @@ public class MyArrayList<T> {
             throw new InvalidIndexException(index + ", size=" + size);
         if (index == 0)    { addStart(value); return; }
         if (index == size) { addEnd(value);   return; }
-        ChunkPos<T> pos = findPosition(index);
-        insertAt(pos.chunk, pos.localIndex, value);
+
+        ArrayData<T> chunk = head;
+        int local = index;
+        while (local >= chunk.count) {
+            local -= chunk.count;
+            chunk = chunk.next;
+        }
+
+        insertAt(chunk, local, value);
         size++;
     }
 
@@ -71,21 +100,43 @@ public class MyArrayList<T> {
         if (size == 0) throw new EmptyListException();
         if (index < 0 || index >= size)
             throw new InvalidIndexException(index + ", size=" + size);
-        ChunkPos<T> pos = findPosition(index);
-        return pos.chunk.get(pos.localIndex);
+
+        ArrayData<T> chunk = head;
+        int local = index;
+        while (local >= chunk.count) {
+            local -= chunk.count;
+            chunk = chunk.next;
+        }
+        return chunk.get(local);
+    }
+
+    private void setAt(int index, T value) {
+        ArrayData<T> chunk = head;
+        int local = index;
+        while (local >= chunk.count) {
+            local -= chunk.count;
+            chunk = chunk.next;
+        }
+        chunk.set(local, value);
     }
 
     public void remove(int index) {
         if (size == 0) throw new EmptyListException();
         if (index < 0 || index >= size)
             throw new InvalidIndexException(index + ", size=" + size);
-        ChunkPos<T>   pos   = findPosition(index);
-        ArrayData<T> chunk = pos.chunk;
-        int           local = pos.localIndex;
+
+        ArrayData<T> chunk = head;
+        int local = index;
+        while (local >= chunk.count) {
+            local -= chunk.count;
+            chunk = chunk.next;
+        }
+
         for (int i = local; i < chunk.count - 1; i++)
             chunk.set(i, chunk.get(i + 1));
-        chunk.data[--chunk.count] = null;   // help GC
+        chunk.data[--chunk.count] = null;
         size--;
+
         if (chunk.isEmpty()) unlinkChunk(chunk);
     }
 
@@ -104,17 +155,6 @@ public class MyArrayList<T> {
             c = c.next;
         }
         System.out.println(sb.append("]"));
-    }
-
-    public void printChunks() {
-        ArrayData<T> c = head;
-        StringBuilder sb = new StringBuilder();
-        while (c != null) {
-            sb.append(c);
-            if (c.next != null) sb.append(" <-> ");
-            c = c.next;
-        }
-        System.out.println(sb.length() == 0 ? "[]" : sb);
     }
 
     private void ensureTailHasSpace() {
@@ -147,7 +187,7 @@ public class MyArrayList<T> {
             newChunk.set(newChunk.count++, chunk.get(i));
         for (int i = half; i < ArrayData.CHUNK_CAPACITY; i++)
             chunk.data[i] = null;
-        chunk.count = half;
+        chunk.count   = half;
         newChunk.prev = chunk;
         newChunk.next = chunk.next;
         if (chunk.next != null) chunk.next.prev = newChunk;
@@ -160,16 +200,5 @@ public class MyArrayList<T> {
         else                    head = chunk.next;
         if (chunk.next != null) chunk.next.prev = chunk.prev;
         else                    tail = chunk.prev;
-    }
-
-    private ChunkPos<T> findPosition(int globalIndex) {
-        ArrayData<T> current   = head;
-        int           remaining = globalIndex;
-        while (current != null) {
-            if (remaining < current.count) return new ChunkPos<>(current, remaining);
-            remaining -= current.count;
-            current    = current.next;
-        }
-        throw new InvalidIndexException("Global index out of range: " + globalIndex);
     }
 }

@@ -8,7 +8,7 @@ public class Main {
         intList.addStart(5);
         intList.add(2, 15);
         System.out.print("Integer list: "); intList.print();
-        System.out.print("Chunks:       "); intList.printChunks();
+        System.out.print("Chunks: "); intList.print();
         System.out.println("get(2): " + intList.get(2));
         intList.remove(2);
         System.out.print("After remove(2): "); intList.print();
