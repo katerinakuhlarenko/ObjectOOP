@@ -1,21 +1,26 @@
 package com.example.usersystem;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.function.Predicate;
 
 public class UserRegistry {
 
-    private final HashSet<User> users = new HashSet<>();
+    private final HashMap<UserIdentifier, User> users = new HashMap<>();
     private int nextId = 1;
 
     public void registerUser(String login, String password) {
-        User candidate = new User(nextId, login, password);
-        if (!users.add(candidate)) {
+        if (findByLogin(login) != null) {
             System.out.println("Користувач [" + login + "] вже є у списку");
             return;
         }
+        UserIdentifier identifier = new UserIdentifier(nextId, login);
+        User user = new User(identifier, password);
+        users.put(identifier, user);
         nextId++;
-        System.out.println("Користувач [" + login + "] зареєстрований (id=" + candidate.getId() + ")");
+        System.out.println("Користувач [" + login + "] зареєстрований (id=" + identifier.getId() + ")");
     }
 
     public boolean loginUser(String login, String password) {
@@ -31,10 +36,10 @@ public class UserRegistry {
     }
 
     public void logoutUser(int userId) {
-        for (User u : users) {
-            if (u.getId() == userId) {
+        for (User u : users.values()) {
+            if (u.getIdentifier().getId() == userId) {
                 u.setLoggedIn(false);
-                System.out.println("Користувач [" + u.getName() + "] вийшов з системи");
+                System.out.println("Користувач [" + u.getIdentifier().getName() + "] вийшов з системи");
                 return;
             }
         }
@@ -46,10 +51,17 @@ public class UserRegistry {
     }
 
     public boolean removeUser(int id) {
-        boolean removed = users.removeIf(u -> u.getId() == id);
-        if (removed) System.out.println("Користувача з id=" + id + " видалено");
-        else         System.out.println("Користувача з id=" + id + " не знайдено");
-        return removed;
+        UserIdentifier toRemove = null;
+        for (UserIdentifier key : users.keySet()) {
+            if (key.getId() == id) { toRemove = key; break; }
+        }
+        if (toRemove == null) {
+            System.out.println("Користувача з id=" + id + " не знайдено");
+            return false;
+        }
+        users.remove(toRemove);
+        System.out.println("Користувача з id=" + id + " видалено");
+        return true;
     }
 
     public void printTotalUniqueUsers() {
@@ -62,14 +74,34 @@ public class UserRegistry {
             return;
         }
         System.out.println("Усі користувачі:");
-        for (User u : users) {
+        for (User u : users.values()) {
             System.out.println("  " + u);
         }
     }
 
+    public LinkedList<User> getUserList() {
+        LinkedList<User> list = new LinkedList<>(users.values());
+        list.sort((a, b) -> Integer.compare(a.getIdentifier().getId(), b.getIdentifier().getId()));
+        return list;
+    }
+
+    public LinkedList<User> getInOrder(Comparator<User> comparator) {
+        LinkedList<User> list = new LinkedList<>(users.values());
+        list.sort(comparator);
+        return list;
+    }
+
+    public LinkedList<User> getFiltered(Predicate<User> predicate) {
+        LinkedList<User> result = new LinkedList<>();
+        for (User u : users.values()) {
+            if (predicate.test(u)) result.add(u);
+        }
+        return result;
+    }
+
     private User findByLogin(String login) {
-        for (User u : users) {
-            if (u.getName().equals(login)) return u;
+        for (User u : users.values()) {
+            if (u.getIdentifier().getName().equals(login)) return u;
         }
         return null;
     }

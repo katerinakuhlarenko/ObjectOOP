@@ -5,22 +5,19 @@ import java.util.Objects;
 
 public class User {
 
-    private final int id;
-    private final String name;
+    private final UserIdentifier identifier;
     private final String password;
     private LocalDateTime lastLoginDate;
     private boolean isLoggedIn;
 
-    public User(int id, String name, String password) {
-        this.id = id;
-        this.name = name;
+    public User(UserIdentifier identifier, String password) {
+        this.identifier = identifier;
         this.password = password;
         this.isLoggedIn = false;
         this.lastLoginDate = null;
     }
 
-    public int getId()                       { return id; }
-    public String getName()                  { return name; }
+    public UserIdentifier getIdentifier()    { return identifier; }
     public String getPassword()              { return password; }
     public LocalDateTime getLastLoginDate()  { return lastLoginDate; }
     public boolean isLoggedIn()              { return isLoggedIn; }
@@ -33,17 +30,17 @@ public class User {
         if (this == o) return true;
         if (!(o instanceof User)) return false;
         User user = (User) o;
-        return Objects.equals(name, user.name);
+        return Objects.equals(identifier, user.identifier);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name);
+        return Objects.hash(identifier);
     }
 
     @Override
     public String toString() {
-        return String.format("User{id=%d, name='%s', loggedIn=%s, lastLogin=%s}",
-                id, name, isLoggedIn, lastLoginDate);
+        return String.format("User{%s, loggedIn=%s, lastLogin=%s}",
+                identifier, isLoggedIn, lastLoginDate);
     }
 }
