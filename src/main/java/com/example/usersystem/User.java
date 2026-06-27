@@ -1,17 +1,14 @@
 package com.example.usersystem;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-public class User implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class User {
 
     private final UserIdentifier identifier;
     private final String password;
     private LocalDateTime lastLoginDate;
-    private transient boolean isLoggedIn;
+    private boolean isLoggedIn;
 
     public User(UserIdentifier identifier, String password) {
         this.identifier = identifier;

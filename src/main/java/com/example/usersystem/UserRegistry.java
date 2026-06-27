@@ -1,18 +1,9 @@
 package com.example.usersystem;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.function.Predicate;
 
 public class UserRegistry {
@@ -106,46 +97,6 @@ public class UserRegistry {
             if (predicate.test(u)) result.add(u);
         }
         return result;
-    }
-
-    public boolean saveToFile(String path) {
-        try (
-                FileOutputStream    fos = new FileOutputStream(path);
-                BufferedOutputStream bos = new BufferedOutputStream(fos);
-                ObjectOutputStream  oos = new ObjectOutputStream(bos)
-        ) {
-            oos.writeObject(new ArrayList<>(users.values()));
-            System.out.println("Збережено " + users.size() + " користувачів у файл: " + path);
-            return true;
-        } catch (IOException e) {
-            System.err.println("Помилка збереження: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public boolean loadFromFile(String path) {
-        try (
-                FileInputStream    fis = new FileInputStream(path);
-                BufferedInputStream bis = new BufferedInputStream(fis);
-                ObjectInputStream  ois = new ObjectInputStream(bis)
-        ) {
-            @SuppressWarnings("unchecked")
-            List<User> loaded = (List<User>) ois.readObject();
-
-            users.clear();
-            int maxId = 0;
-            for (User u : loaded) {
-                users.put(u.getIdentifier(), u);
-                if (u.getIdentifier().getId() > maxId) maxId = u.getIdentifier().getId();
-            }
-            nextId = maxId + 1;
-
-            System.out.println("Відновлено " + loaded.size() + " користувачів з файлу: " + path);
-            return true;
-        } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Помилка відновлення: " + e.getMessage());
-            return false;
-        }
     }
 
     private User findByLogin(String login) {
