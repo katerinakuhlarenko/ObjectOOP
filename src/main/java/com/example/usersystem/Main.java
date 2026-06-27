@@ -11,6 +11,8 @@ public class Main {
     private static final Scanner     sc        = new Scanner(System.in);
 
     public static void main(String[] args) {
+        promptRestoreOnStartup();
+
         while (true) {
             printMenu();
             String choice = sc.nextLine().trim();
@@ -25,7 +27,9 @@ public class Main {
                 case "8":  handleGetUserList();               break;
                 case "9":  handleGetInOrder();                break;
                 case "10": handleGetFiltered();               break;
-                case "0":  System.out.println("Вихід..."); return;
+                case "11": handleSave();                      break;
+                case "12": handleLoad();                      break;
+                case "0":  handleExit(); return;
                 default :  System.out.println("Невірний вибір");
             }
             System.out.println();
@@ -33,19 +37,49 @@ public class Main {
     }
 
     private static void printMenu() {
-        System.out.println("─── User Registry (HashMap) ───");
+        System.out.println("─── User Registry (Serialization) ───");
         System.out.println("1.  Зареєструвати користувача");
         System.out.println("2.  Увійти у систему");
         System.out.println("3.  Вийти з системи");
         System.out.println("4.  Перевірити чи зареєстрований");
         System.out.println("5.  Видалити користувача за id");
         System.out.println("6.  Кількість унікальних користувачів");
-        System.out.println("7.  Показати всіх (порядок HashMap)");
-        System.out.println("8.  getUserList() — список за id");
+        System.out.println("7.  Показати всіх");
+        System.out.println("8.  getUserList() — за id");
         System.out.println("9.  getInOrder(lambda) — сортування");
         System.out.println("10. getFiltered(lambda) — фільтрація");
+        System.out.println("11. Зберегти у файл");
+        System.out.println("12. Відновити з файлу");
         System.out.println("0.  Вихід");
         System.out.print("> ");
+    }
+
+    private static void promptRestoreOnStartup() {
+        System.out.print("Відновити базу користувачів з файлу? (так/ні) [ні]: ");
+        String ans = sc.nextLine().trim().toLowerCase();
+        if (isYes(ans)) {
+            System.out.print("Шлях до файлу [users.dat]: ");
+            String path = sc.nextLine().trim();
+            if (path.isEmpty()) path = "users.dat";
+            registry.loadFromFile(path);
+        }
+        System.out.println();
+    }
+
+    private static void handleExit() {
+        System.out.print("Зберегти користувачів у файл перед виходом? (так/ні) [ні]: ");
+        String ans = sc.nextLine().trim().toLowerCase();
+        if (isYes(ans)) {
+            System.out.print("Шлях до файлу [users.dat]: ");
+            String path = sc.nextLine().trim();
+            if (path.isEmpty()) path = "users.dat";
+            registry.saveToFile(path);
+        }
+        System.out.println("Вихід...");
+    }
+
+    private static boolean isYes(String s) {
+        return s.equals("так") || s.equals("y") || s.equals("yes") || s.equals("т");
     }
 
     private static void handleRegister() {
@@ -130,5 +164,19 @@ public class Main {
         if (list.isEmpty()) { System.out.println("Нічого не знайдено"); return; }
         System.out.println("Знайдено:");
         for (User u : list) System.out.println("  " + u);
+    }
+
+    private static void handleSave() {
+        System.out.print("Шлях до файлу [users.dat]: ");
+        String path = sc.nextLine().trim();
+        if (path.isEmpty()) path = "users.dat";
+        registry.saveToFile(path);
+    }
+
+    private static void handleLoad() {
+        System.out.print("Шлях до файлу [users.dat]: ");
+        String path = sc.nextLine().trim();
+        if (path.isEmpty()) path = "users.dat";
+        registry.loadFromFile(path);
     }
 }
